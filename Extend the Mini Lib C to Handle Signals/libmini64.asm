@@ -25,6 +25,9 @@ extern	errno
 	gensys   9, mmap
 	gensys  10, mprotect
 	gensys  11, munmap
+	gensys	13, rt_sigaction
+	gensys	14, rt_sigprocmask
+	gensys	15, rt_sigreturn
 	gensys  22, pipe
 	gensys  32, dup
 	gensys  33, dup2
@@ -40,7 +43,7 @@ extern	errno
 	gensys  84, rmdir
 	gensys  85, creat
 	gensys  86, link
-	gensys  88, unlink
+	gensys  87, unlink
 	gensys  89, readlink
 	gensys  90, chmod
 	gensys  92, chown
@@ -52,6 +55,7 @@ extern	errno
 	gensys 106, setgid
 	gensys 107, geteuid
 	gensys 108, getegid
+	gensys 127, rt_sigpending
 
 	global open:function
 open:
@@ -102,3 +106,48 @@ sleep_quit:
 	add	rsp, 32
 	ret
 
+	global sigreturn:function
+sigreturn:
+	mov rax, 0
+	mov eax, 15
+	syscall
+
+
+	global setjmp:function
+setjmp:
+	mov    qword [rdi], rbx
+	mov    qword [rdi + 8], rbp
+	mov    qword [rdi + 16], r12
+	mov    qword [rdi + 24], r13
+	mov    qword [rdi + 32], r14
+	mov    qword [rdi + 40], r15
+	lea    rax, qword [rsp + 8]
+	mov    qword [rdi + 48], rax
+	mov    rax, qword [rsp]
+	mov    qword [rdi + 56], rax
+
+	lea	   rdx, qword [rdi + 64]
+	mov    rdi, 2
+	mov    rsi, 0
+	mov    r10, 8
+	call   sys_rt_sigprocmask
+	mov    rax, 0
+	ret
+
+	global longjmp:function
+longjmp:
+	mov    rax, rsi
+	mov    rbp, qword [rdi + 8]
+	mov    rsp, qword [rdi + 48]
+	push   qword [rdi + 56]
+	mov    rbx, qword [rdi]
+	mov    r12, qword [rdi + 16]
+	mov    r13, qword [rdi + 24]
+	mov    r14, qword [rdi + 32]
+	mov    r15, qword [rdi + 40]
+	lea    rsi, qword [rdi + 64]
+	mov    rdi, 2
+	mov    rdx, 0
+	mov    r10, 8    
+	call   sys_rt_sigprocmask
+	ret

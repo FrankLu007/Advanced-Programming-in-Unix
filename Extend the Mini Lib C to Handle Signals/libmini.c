@@ -160,7 +160,7 @@ uid_t geteuid()
 	long ret = sys_geteuid();
 	WRAPPER_RETval(uid_t);
 }
-gid_t	getegid() 
+gid_t getegid() 
 {
 	long ret = sys_getegid();
 	WRAPPER_RETval(uid_t);
@@ -178,9 +178,66 @@ size_t strlen(const char *s)
 }
 int alarm(unsigned seconds)
 {
-	unsigned ret = sys_alarm(seconds);
+	long ret = sys_alarm(seconds);
 	WRAPPER_RETval(int);
 }
+int sigprocmask(int how, sigset_t * nset, sigset_t * oset)
+{
+	long ret = sys_rt_sigprocmask(how, nset, oset, 8);
+	WRAPPER_RETval(int);
+}
+int sigpending(sigset_t * oset)
+{
+	long ret = sys_rt_sigpending(oset, 8);
+	WRAPPER_RETval(int);
+}
+int sigaddset(sigset_t * set, int signum)
+{
+	set->__set |= (((unsigned long)1) << (signum - 1));
+	return 0;
+}
+int sigemptyset(sigset_t * set)
+{
+	set->__set = 0;
+	return 0;
+}
+int sigfillset(sigset_t *set)
+{
+	set->__set = ~0;
+	return 0;
+}
+int sigdelset(sigset_t * set, int signum)
+{
+	set->__set &= ~(((unsigned long)1) << (signum - 1));
+	return 0;
+}
+int sigismember(const sigset_t *set, int signum)
+{
+	return (set->__set & (((unsigned long)1) << (signum - 1))) ? 1 : 0;
+}
+sighandler_t signal(int signum, sighandler_t handler)
+{
+	sigaction_t act, old;
+	act.sa_handler = handler;
+	sigemptyset(&act.sa_mask);
+	act.sa_flags = 0;
+	sigaction(signum, &act, &old);
+	return old.sa_handler;
+}
+int sigaction(int sig, const struct sigaction_t * act, struct sigaction_t * oact)
+{
+	if(!act)
+	{
+		long ret = sys_rt_sigaction(sig, NULL, oact, 8);
+		WRAPPER_RETval(int);
+	}
+	sigaction_t nact = * act;
+	nact.sa_flags |= SA_RESTORER | SA_ONSTACK;
+	nact.sa_restorer = sigreturn;
+	long ret = sys_rt_sigaction(sig, &nact, oact, 8);
+	WRAPPER_RETval(int);
+}
+
 
 #define	PERRMSG_MIN	0
 #define	PERRMSG_MAX	34
